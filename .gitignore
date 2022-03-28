@@ -1,0 +1,10 @@
+# IDEs
+.vscode/
+.idea/
+
+# Data folder
+data/
+
+# Output files
+*.png
+*.csv
