@@ -1,0 +1,91 @@
+ArchivalSettings:
+  Enabled: true
+  WhenDisabledLoadFromExpt: default
+ExptDescription: Default experiment with all radiomic features enabled and no clinical
+  variables
+dimensionality_reduction_settings:
+  excluded_modalities: []
+  modality_handling_mode_dr: joint
+  model: null
+  model_hyperparameters:
+    BATCH_SIZE: 2
+    EPOCHS: 100
+    ES_PATIENCE: 20
+    FRAC_TRAIN_AE: 0.8
+    HIDDEN_DIM: 64
+    LATENT_SPACE: 30
+feature_selection_settings:
+  consistency_options:
+    consistency_threshold: 2
+    n_runs: 5
+  modality_handling: per_modality
+  subset_selection_mode: feature_selection
+  supervised:
+    K_top: 50
+    discretization_bins: 10
+    method: MIM
+    target_fs: discrete
+  unsupervised:
+    corr_threshold_high: 0.8
+    drop_qconstant: 0
+    handle_correlated: ignore
+    threshold_qconst: 0.05
+modelling_settings:
+  cohorts_settings:
+    CohortAttributes:
+    - SUBJID
+    CohortColumn: COHORT
+    CohortSplits:
+    - training
+    - validation
+    - test
+    CohortTable: null
+    CohortsAvailable: false
+    ExcludeCohorts: false
+    UseCohorts: false
+  data_characteristics:
+    features:
+    - []
+    - []
+    missingdata_mode:
+    - drop
+    - null
+    pdl1: PDL1_STATUS_clin
+    subject: SUBJID
+    targets:
+    - OS
+    - OS.time
+  models:
+  - RSF
+  - CPH-GB
+  - CLS-GB
+  - CPH-L2
+  - CPH-EN
+  num_runs: 5
+  pdl1: false
+  sensitivity_analysis: true
+  subsets:
+  - - PYRADIOMICS
+  task: regression
+  threshold: 365
+settings:
+  cohorts: ''
+  modalities:
+    CLINICAL: _clin
+    PYRADIOMICS: _pr
+  preprocessing:
+    modality:
+    - PYRADIOMICS
+    type:
+    - minmax_scale
+  split_mode: subject
+  strat_columns:
+  - STUDY
+  - PDL1_STATUS
+  stratify: false
+  train_fraction: 0.8
+user_options_settings:
+  return_feature_importance_list: 1
+  save_selected: 0
+  shuffle_targets: 0
+  verbose: 1
