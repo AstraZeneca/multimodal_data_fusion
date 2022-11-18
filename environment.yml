@@ -55,7 +55,7 @@ dependencies:
   - pytorch=1.10.2=py3.9_cpu_0
   - pytorch-mutex=1.0=cpu
   - readline=8.1.2=h7f8727e_1
-  - scikit-survival=0.15.0.post0=py39h9a426be_0
+  # - scikit-survival=0.15.0.post0=py39h9a426be_0
   - setuptools=58.0.4=py39h06a4308_0
   - six=1.16.0=pyhd3eb1b0_0
   - sqlite=3.37.0=hc218d9a_0
@@ -150,4 +150,3 @@ dependencies:
     - werkzeug==2.0.2
     - wrapt==1.13.3
     - zipp==3.7.0
-

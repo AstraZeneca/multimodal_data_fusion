@@ -101,15 +101,15 @@ def handle_missingdata(data: pd.DataFrame, cols: dict, mode: list, column_vals: 
         elif mode[i] == "median":
             if len(column_vals[key]) == 0:
                 column_vals[key] = df[columns].median()
-            df[columns].fillna(column_vals[key], inplace=True)
+            df[columns] = df[columns].fillna(column_vals[key])
         elif mode[i] == "mean":
             if len(column_vals[key]) == 0:
                 column_vals[key] = df[columns].mean()
-            df[columns].fillna(column_vals[key], inplace=True)
+            df[columns] = df[columns].fillna(column_vals[key])
         elif mode[i] == "mode":
             if len(column_vals[key]) == 0:
                 column_vals[key] = df[columns].mode().iloc[0]
-            df[columns].fillna(column_vals[key], inplace=True)
+            df[columns] = df[columns].fillna(column_vals[key])
         elif mode[i] is None:
             i += 1
             continue

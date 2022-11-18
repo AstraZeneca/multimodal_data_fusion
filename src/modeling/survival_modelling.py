@@ -578,7 +578,7 @@ def train_survival_model_pycox_final(X_train, Y_train, X_val, Y_val, model_class
     return(model, train_set_c_index, val_set_c_index)
 
 
-def get_weighted_ensemble_predictions(data_train, data_test, survival_models, trained_models, taining_c_indices, verbose):
+def get_weighted_ensemble_predictions(data_train, data_test, survival_models, trained_models, training_c_indices, verbose):
     
     #TODO: Add Function description
     
@@ -589,17 +589,17 @@ def get_weighted_ensemble_predictions(data_train, data_test, survival_models, tr
     predictions = pd.DataFrame(np.nan, index=range(data_test.shape[0]), columns=survival_models)
     
     #Weights based on the training set (removing models with C-index < 0.5):
-    ensemble_weights_tr = taining_c_indices - 0.5*np.ones((taining_c_indices.shape))
+    ensemble_weights_tr = training_c_indices - 0.5*np.ones((training_c_indices.shape))
     ensemble_weights_tr[ensemble_weights_tr<0] = 0 #models with C-index < 0.5 are assigned a weight of 0 
     ensemble_weights_tr = ensemble_weights_tr/np.sum(ensemble_weights_tr)
 
     #Weights based on the training set (including models with C-index < 0.5, flipping its predictions):
-    ensemble_weights_tr_all_models = np.absolute(taining_c_indices - 0.5*np.ones((taining_c_indices.shape)))
+    ensemble_weights_tr_all_models = np.absolute(training_c_indices - 0.5*np.ones((training_c_indices.shape)))
     ensemble_weights_tr_all_models = ensemble_weights_tr_all_models/np.sum(ensemble_weights_tr_all_models)
     
     if verbose == 1:
         print("The models' training set C-indices are:")
-        print(taining_c_indices)
+        print(training_c_indices)
         print("The models' weights in the ensemble based on the training set, excluding models with C-index < 0.5, are:")
         print(ensemble_weights_tr)
         print("The models' weights in the ensemble based on the training set, including models with C-index < 0.5 with flipped predictions, are:")
@@ -636,9 +636,9 @@ def get_weighted_ensemble_predictions(data_train, data_test, survival_models, tr
 
     #Flip predictions of models with C-index < 0.5
     for model in range(len(survival_models)):
-        if taining_c_indices[model] < 0.5 :
+        if training_c_indices[model] < 0.5 :
             if verbose == 1:
-                print("Model "+survival_models[model]+" achieved a training set C-index = "+str(taining_c_indices[model])+", i.e. < 0.5. Its predictions will be flipped in the full version of the ensemble.")
+                print("Model "+survival_models[model]+" achieved a training set C-index = "+str(training_c_indices[model])+", i.e. < 0.5. Its predictions will be flipped in the full version of the ensemble.")
             predictions_normalised[survival_models[model]] = 1 - predictions_normalised[survival_models[model]]
     
     #Get final (weighted) prediction:

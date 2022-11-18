@@ -48,7 +48,7 @@ modelling_settings:
     - []
     - []
     missingdata_mode:
-    - drop
+    - median
     - null
     pdl1: PDL1_STATUS_clin
     subject: SUBJID
@@ -65,7 +65,8 @@ modelling_settings:
   pdl1: false
   sensitivity_analysis: true
   subsets:
-  - - PYRADIOMICS
+  - - CLINICAL
+    - PYRADIOMICS
   task: regression
   threshold: 365
 settings:

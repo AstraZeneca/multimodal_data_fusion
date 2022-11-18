@@ -29,6 +29,10 @@ if installing to a different location, it can be symbolically linked via
 ```
 ln -s /path/to/env_name ~/.conda/envs/env_name
 ```
+Then activate the environment and install scikit-survival package
+```
+conda install -c sebp scikit-survival
+```
 
 ## Usage <a name = "usage"></a>
 

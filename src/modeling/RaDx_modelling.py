@@ -336,15 +336,15 @@ def supervised_fs(data_train, target_vars, modalities_dict, subset, target_fs, m
     feature_values_per_modality_disc = feature_values_per_modality
 
     #Some clinical features need to be converted to numerical as they are categorical:
-    if 'CLIN' in subset: #if 'CLIN' modality (clinical features) is among the included ones in the experiment
-        for i in range(feature_values_per_modality['CLIN'].shape[1]):
+    if 'CLINICAL' in subset: #if 'CLINICAL' modality (clinical features) is among the included ones in the experiment
+        for i in range(feature_values_per_modality['CLINICAL'].shape[1]):
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore')
                 enc = preprocessing.OrdinalEncoder()
-                feature_values_per_modality_disc['CLIN'][:,i] = enc.fit_transform(feature_values_per_modality['CLIN'][:,i].reshape(-1, 1)).ravel().astype(int)                  
+                feature_values_per_modality_disc['CLINICAL'][:,i] = enc.fit_transform(feature_values_per_modality['CLINICAL'][:,i].reshape(-1, 1)).ravel().astype(int)                  
 
     for key in feature_values_per_modality_disc.keys():
-        if key in subset and key != 'CLIN': #if modality is among the included ones in the experiment (and not CLIN)
+        if key in subset and key != 'CLINICAL': #if modality is among the included ones in the experiment (and not CLINICAL)
             for i in range(feature_values_per_modality_disc[key].shape[1]):
                 with warnings.catch_warnings():
                     warnings.simplefilter('ignore')

@@ -4,7 +4,7 @@
 # Copyright 2020 by AstraZeneca
 # All rights reserved.
 
-@authors: ML&AI - Oncology Biometrics, Data Science & AI - Translational Medicine
+@authors: ML&AI - Oncology Data Science
 @email: harish.raviprakash@astrazeneca.com
 @description: Main file for the multiomics pipeline
 """

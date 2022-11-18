@@ -228,4 +228,4 @@ if __name__ == "__main__":
     parser.add_argument('--csv', '-c', default='clinical_radiomics_features.csv', 
                         type=str, help='Full path to the features csv')
     args = parser.parse_args()
-    main(args)
+    pipeline_main(args)
