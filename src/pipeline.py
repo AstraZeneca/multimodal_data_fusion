@@ -14,16 +14,24 @@ from utils.data_utils import load_data, split_data
 from utils.config_utils import save_config
 
 
-def getModels(num_runs: int, survival_models: list, data_train: pd.DataFrame, data_val: pd.DataFrame, data_test: pd.DataFrame, targets: list, debug: int, return_feature_importance_list: int) -> pd.DataFrame:
+def getModels(num_runs: int, run: int, modality: str, survival_models: list, data_train: pd.DataFrame, data_val: pd.DataFrame, data_test: pd.DataFrame, targets: list, debug: int, return_feature_importance_list: int) -> Tuple[pd.DataFrame, np.array, np.array]:
     trained_models = pd.DataFrame(
         None, index=range(num_runs), columns=survival_models)
+    pred_true_train = pd.DataFrame(None, index=range(1), columns=survival_models)
+    pred_true_val = pd.DataFrame(None, index=range(1), columns=survival_models)
+    pred_true_test = pd.DataFrame(None, index=range(1), columns=survival_models)
+    expt_name = model
+    if not modality is None:
+        expt_name += '_' + modality
     for model in survival_models:
         # NOTE: Ask Nikos about adding data_val here
         surv_model, test_set_c_index, val_set_c_index, train_set_c_index, importances_df, pred_train, pred_test = survival_modelling_main(
             data_train, data_test, targets, model, return_feature_importance_list, debug)
-
+        pred_true_train.at[0, 'Predicted Risk Score '+expt_name] = pred_train
+        pred_true_val.at[0, 'Predicted Risk Score '+expt_name] = pred_train  # TODO: Change to val
+        pred_true_test.at[0, 'Predicted Risk Score '+expt_name] = pred_test
         trained_models.at[trained_models.index[run], model] = surv_model
-        return trained_models
+        return trained_models, pred_true_train, pred_true_val, pred_true_test
 
 
 def getDataPerModality(subset: list, modality: str, data_train_all_modalities: pd.DataFrame, data_val_all_modalities: pd.DataFrame, data_test_all_modalities: pd.DataFrame, features_per_modality: dict, debug: int, time_col: str, evt_col: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -108,8 +116,12 @@ def pipeline(args):
     # Load the data
     data = load_data(datapath)
     cancer_types = expt_config['data_settings']['cancer_types']
+    ### Save config ###
+    save_config(expt_config=expt_config, expt_name=output_name, savepath=save_path)
+
     # Model for each subset of cancer types
     for cancer_type in cancer_types:
+        cancer_folder = os.path.join(save_path, '_'.join(cancer_type))
         if evaluate_on_individual_types == 1 and len(cancer_type) > 1:
 
             # Will store per-cancer results:
@@ -136,8 +148,8 @@ def pipeline(args):
             ensemble_weights_tr_type = np.zeros((num_runs, len(cancer_type), len(survival_models)))
         
         for subset in subset_list:
-            subset_folder = os.path.join(save_path, '_'.join(subset))
-            load_subset_folder = os.path.join(load_path, '_'.join(subset))
+            subset_folder = os.path.join(cancer_folder, '_'.join(subset))
+            load_subset_folder = os.path.join(cancer_folder, '_'.join(subset))
             print("\n Cancer Types(s):", cancer_type)
             print('\n Modalities: ', subset)
             print("\n Starting {} runs ... \n".format(num_runs))
@@ -254,8 +266,15 @@ def pipeline(args):
                         pred_true_val['CNSR'] = data_val[evt_col]
                         pred_true_test['CNSR'] = data_test[evt_col]
                         # Running all the Selected Survival Models    
-                        trained_models = getModels(num_runs, survival_models, data_train, data_val, data_test, expt_config['modelling_settings'][
+                        trained_models, pred_train, pred_val, pred_test = getModels(num_runs, run, modality, survival_models, data_train, data_val, data_test, expt_config['modelling_settings'][
                                                 'data_characteristics']['targets'], user_options_settings['verbose'], user_options_settings['return_feature_importance_list'])
+                        model_pool_run = trained_models.iloc[run]
+                        pred_true_train= pd.concat([pred_true_train, pred_train])
+                        pred_true_val= pd.concat([pred_true_val, pred_val])
+                        pred_true_test= pd.concat([pred_true_test, pred_test])
+                    pred_true_train.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_TRUE_TRAIN.csv'))
+                    pred_true_val.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_VAL_TRAIN.csv'))
+                    pred_true_test.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_TRUE_TEST.csv'))
                 else:
                     pred_true_train['True OS'] = data_train[os_col]
                     pred_true_val['True OS'] = data_val[os_col]
@@ -263,59 +282,65 @@ def pipeline(args):
                     pred_true_train['CNSR'] = data_train[evt_col]
                     pred_true_val['CNSR'] = data_val[evt_col]
                     pred_true_test['CNSR'] = data_test[evt_col]
-                    trained_models = getModels(num_runs, survival_models, data_train, data_val, data_test, expt_config['modelling_settings'][
+                    # pred_true_train['Cancer Type'] = data_train['cancer_type']
+                    # pred_true_val['Cancer Type'] = data_val['cancer_type']
+                    # pred_true_test['Cancer Type'] = data_test['cancer_type']
+                    trained_models, pred_train, pred_val, pred_test = getModels(num_runs, run, None, survival_models, data_train, data_val, data_test, expt_config['modelling_settings'][
                                                 'data_characteristics']['targets'], user_options_settings['verbose'], user_options_settings['return_feature_importance_list'])
-                #Store models & their training / validation set performances to compute ensemble predictions:
-                training_c_indices_run = all_runs_train.iloc[run].to_numpy() #all_runs_val.iloc[run].to_numpy() #Choose training or validation set weights
-                model_pool_run = trained_models.iloc[run]
-                full_train_weighted_ensemble_c_index[run], train_weighted_ensemble_c_index[run] = get_weighted_ensemble_predictions(data_train, data_test, expt_config['modelling_settings']['data_characteristics']['targets'], survival_models, model_pool_run, training_c_indices_run, expt_config['user_options_settings']['verbose'])    
-                #all_runs_test.at[all_runs_train.index[run], 'Full Train Weighted Ensemble'] = full_train_weighted_ensemble_c_index[run] #ignore this; we almost never get a model with <0.5 training set C-index
-                all_runs_test.at[all_runs_train.index[run], 'Train Weighted Ensemble'] = train_weighted_ensemble_c_index[run]
-                # else:
-                #     # TODO: Load the all_runs files and importances
-                #     if os.path.exists(os.path.join(load_subset_folder, str(run+1) + '.pkl')):
-                #         run_file = open(os.path.join(load_subset_folder, str(run+1) + '.pkl'), "rb")
-                #         data_train = pickle.load(run_file)
-                pred_true_train.to_csv(os.path.join(save_path,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_TRUE_TRAIN.csv'))
-                pred_true_test.to_csv(os.path.join(save_path,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_TRUE_TEST.csv'))
-            ### Save config ###
-            save_config(expt_config=expt_config, expt_name=output_name, savepath=save_path)
-        
+                    model_pool_run = trained_models.iloc[run]
+                    #Store models & their training / validation set performances to compute ensemble predictions:
+                    training_c_indices_run = all_runs_train.iloc[run].to_numpy() #all_runs_val.iloc[run].to_numpy() #Choose training or validation set weights
+                    model_pool_run = trained_models.iloc[run]
+                    full_train_weighted_ensemble_c_index[run], train_weighted_ensemble_c_index[run] = get_weighted_ensemble_predictions(data_train, data_test, expt_config['modelling_settings']['data_characteristics']['targets'], survival_models, model_pool_run, training_c_indices_run, expt_config['user_options_settings']['verbose'])    
+                    #all_runs_test.at[all_runs_train.index[run], 'Full Train Weighted Ensemble'] = full_train_weighted_ensemble_c_index[run] #ignore this; we almost never get a model with <0.5 training set C-index
+                    all_runs_test.at[all_runs_train.index[run], 'Train Weighted Ensemble'] = train_weighted_ensemble_c_index[run]
+                    pred_true_train= pd.concat([pred_true_train, pred_train])
+                    pred_true_val= pd.concat([pred_true_val, pred_val])
+                    pred_true_test= pd.concat([pred_true_test, pred_test])
+                    pred_true_train.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_TRUE_TRAIN.csv'))
+                    pred_true_val.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_VAL_TRAIN.csv'))
+                    pred_true_test.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_RUN' + str(run+1)+'_PRED_TRUE_TEST.csv'))
+            
+            if expt_config['modelling_settings']['late_fusion']:
+                means_df, CI_df = late_fusion('_'.join(subset), num_runs, cancer_type, subset, survival_models)
+                means_df.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_MEAN_CINDEX.csv'))
+                CI_df.to_csv(os.path.join(subset_folder,'_'.join(subset)+'_CI_95.csv'))
         #------------------------------------------------------------------------------------------------------    
         # Save list of selected features in each run
-        if not load_from_previous:
+        if not load_from_previous: 
             df_feats = pd.DataFrame.from_dict(selected_features)
             df_feats.to_csv(os.path.join(subset_folder, 'selected_features.csv'))
             # Save model performances
-            all_runs_train.to_csv(os.path.join(save_path, 'modelPerformance_train.csv'))
-            all_runs_val.to_csv(os.path.join(save_path, 'modelPerformance_val.csv'))
-            all_runs_test.to_csv(os.path.join(save_path, 'modelPerformance_test.csv'))
+            if not expt_config['modelling_settings']['late_fusion']: 
+                all_runs_train.to_csv(os.path.join(cancer_folder, 'modelPerformance_train.csv'))
+                all_runs_val.to_csv(os.path.join(cancer_folder, 'modelPerformance_val.csv'))
+                all_runs_test.to_csv(os.path.join(cancer_folder, 'modelPerformance_test.csv'))
 
-        #------------------------------------- Printing Results: ----------------------------------------------
-        # Computing model statistics over all runs:
-        print("\n   Finished {} runs ... \n".format(num_runs))
-        print("   Modalities: ", subset)
+        # #------------------------------------- Printing Results: ----------------------------------------------
+        # # Computing model statistics over all runs:
+        # print("\n   Finished {} runs ... \n".format(num_runs))
+        # print("   Modalities: ", subset)
 
-        print('*************************FINAL RESULTS**************************')
-        print("   Test set C-index per model, per run, on all data:")
-        print(all_runs_test)
+        # print('*************************FINAL RESULTS**************************')
+        # print("   Test set C-index per model, per run, on all data:")
+        # print(all_runs_test)
 
-        for model in all_runs_test.columns:
-            print('Model ' + model)
-            model_mean = all_runs_test[model].mean(axis=0, skipna = True)#Model mean, across runs
-            sc = st.sem(all_runs_test[model], nan_policy = 'omit')#Model standard error around the mean, across runs
-            print("   Runs mean: {}, CI: {}".format(model_mean, st.t.interval(alpha=0.95, df=num_runs - 1, loc=model_mean, scale=sc)))
+        # for model in all_runs_test.columns:
+        #     print('Model ' + model)
+        #     model_mean = all_runs_test[model].mean(axis=0, skipna = True)#Model mean, across runs
+        #     sc = st.sem(all_runs_test[model], nan_policy = 'omit')#Model standard error around the mean, across runs
+        #     print("   Runs mean: {}, CI: {}".format(model_mean, st.t.interval(alpha=0.95, df=num_runs - 1, loc=model_mean, scale=sc)))
 
-        #Show top num_feat feature importances:
-        num_feat = 20
-        if importances_full_df.shape[0] == 0:
-            print('Feature importance list is empty.')
-        else:
-            print('Feature Importances (top-'+str(num_feat)+') -- on all test data:')
-            average_importance = importances_full_df.groupby('Feature')['Feature Importance'].mean().sort_values(ascending=False)
-            # Save results
-            average_importance.to_csv(os.path.join(save_path, 'Average_importances.csv'))
-            print(average_importance[:num_feat])
+        # #Show top num_feat feature importances:
+        # num_feat = 20
+        # if importances_full_df.shape[0] == 0:
+        #     print('Feature importance list is empty.')
+        # else:
+        #     print('Feature Importances (top-'+str(num_feat)+') -- on all test data:')
+        #     average_importance = importances_full_df.groupby('Feature')['Feature Importance'].mean().sort_values(ascending=False)
+        #     # Save results
+        #     average_importance.to_csv(os.path.join(save_path, 'Average_importances.csv'))
+        #     print(average_importance[:num_feat])
         print('******************************************************************') 
         #------------------------------------------------------------------------------------------------------
         print("\n   @@@@@@@@@@@@@@@@@@@@@@\n")
