@@ -36,7 +36,7 @@ def hyperparameter_search(data: list, hyperparam_space: dict, model, splits: int
     return result
 
 
-def prepare_data_sksurv(data_train, data_test):#TODO: add handle_categorical as option
+def prepare_data_sksurv(data_train, data_test, target_cols):#TODO: add handle_categorical as option
     """
     Method to prepare training & test sets to be used for training & evaluating scikit-survival models.
     Current version also converts categorical to numerical (ordinal) --TODO: Hard-coded; make dynamic.
@@ -107,8 +107,8 @@ def prepare_data_sksurv(data_train, data_test):#TODO: add handle_categorical as 
         data_train_temp = data_full_cat_to_num[data_full['train'] == 1]
         data_test_temp = data_full_cat_to_num[data_full['train'] == 0]
         
-        X_train, Y_train = datasets.get_x_y(data_train_temp, attr_labels=['OS', 'OS.time'], pos_label=1, survival=True)
-        X_test, Y_test = datasets.get_x_y(data_test_temp, attr_labels=['OS', 'OS.time'], pos_label=1, survival=True)
+        X_train, Y_train = datasets.get_x_y(data_train_temp, attr_labels=target_cols, pos_label=1, survival=True)
+        X_test, Y_test = datasets.get_x_y(data_test_temp, attr_labels=target_cols, pos_label=1, survival=True)
         
         X_train.drop('train', axis=1, inplace=True)
         X_test.drop('train', axis=1, inplace=True)  
