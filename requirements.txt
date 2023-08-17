@@ -1,0 +1,16 @@
+deepdiff==5.8.1
+eli5==0.13.0
+lifelines==0.27.0
+matplotlib==3.5.2
+numpy==1.23.1
+pandas==1.5.2
+pycox==0.2.3
+pytest==7.4.0
+PyYAML==6.0.1
+scikit_learn==1.3.0
+scikit_survival==0.19.0
+scipy==1.9.1
+seaborn==0.11.2
+sklearn_pandas==2.2.0
+torch==1.12.1
+torchtuples==0.2.2
