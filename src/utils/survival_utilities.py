@@ -80,16 +80,7 @@ def prepare_data_sksurv(data_train, data_test, target_cols):#TODO: add handle_ca
         warnings.simplefilter('ignore')
         #Convert categorical to numerical:
         data_full_cat_to_num = data_full
-        
-#         #Option 1: 1-hot-encoding (could work best for XGB) -TODO: weird bug here...fix
-#         for i in range(len(cat_columns_list)):
-#             column_name = cat_columns_list[i]
-#             if column_name in data_full.columns:
-#                 df = pd.get_dummies(data_full, columns=[column_name])
-#                 data_full_cat_to_num = pd.concat([data_full_cat_to_num, df], axis=1)
-#                 data_full_cat_to_num.drop(column_name, axis=1, inplace=True)# Now that we have the dummy variables, we can get rid of the original variable      
-
-        #Option 2: ordinal (could work best for CPH)
+      
         if verbose == 1:
             print("Categorical features converted to numerical via ordinal encoding.")
         for i in range(len(cat_columns_list)):
