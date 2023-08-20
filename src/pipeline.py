@@ -24,11 +24,10 @@ def getModels(num_runs: int, run: int, modality: str, survival_models: list, dat
     if not modality is None:
         expt_name += '_' + modality
     for model in survival_models:
-        # NOTE: Ask Nikos about adding data_val here
-        surv_model, test_set_c_index, val_set_c_index, train_set_c_index, importances_df, pred_train, pred_test = survival_modelling_main(
-            data_train, data_test, targets, model, return_feature_importance_list, debug)
+        surv_model, _, _, _, _, pred_train, pred_val, pred_test = survival_modelling_main(
+            data_train, data_val, data_test, targets, model, return_feature_importance_list, debug)
         pred_true_train.at[0, 'Predicted Risk Score '+expt_name] = pred_train
-        pred_true_val.at[0, 'Predicted Risk Score '+expt_name] = pred_train  # TODO: Change to val
+        pred_true_val.at[0, 'Predicted Risk Score '+expt_name] = pred_val
         pred_true_test.at[0, 'Predicted Risk Score '+expt_name] = pred_test
         trained_models.at[trained_models.index[run], model] = surv_model
         return trained_models, pred_true_train, pred_true_val, pred_true_test
@@ -316,31 +315,6 @@ def pipeline(args):
                 all_runs_val.to_csv(os.path.join(cancer_folder, 'modelPerformance_val.csv'))
                 all_runs_test.to_csv(os.path.join(cancer_folder, 'modelPerformance_test.csv'))
 
-        # #------------------------------------- Printing Results: ----------------------------------------------
-        # # Computing model statistics over all runs:
-        # print("\n   Finished {} runs ... \n".format(num_runs))
-        # print("   Modalities: ", subset)
-
-        # print('*************************FINAL RESULTS**************************')
-        # print("   Test set C-index per model, per run, on all data:")
-        # print(all_runs_test)
-
-        # for model in all_runs_test.columns:
-        #     print('Model ' + model)
-        #     model_mean = all_runs_test[model].mean(axis=0, skipna = True)#Model mean, across runs
-        #     sc = st.sem(all_runs_test[model], nan_policy = 'omit')#Model standard error around the mean, across runs
-        #     print("   Runs mean: {}, CI: {}".format(model_mean, st.t.interval(alpha=0.95, df=num_runs - 1, loc=model_mean, scale=sc)))
-
-        # #Show top num_feat feature importances:
-        # num_feat = 20
-        # if importances_full_df.shape[0] == 0:
-        #     print('Feature importance list is empty.')
-        # else:
-        #     print('Feature Importances (top-'+str(num_feat)+') -- on all test data:')
-        #     average_importance = importances_full_df.groupby('Feature')['Feature Importance'].mean().sort_values(ascending=False)
-        #     # Save results
-        #     average_importance.to_csv(os.path.join(save_path, 'Average_importances.csv'))
-        #     print(average_importance[:num_feat])
         print('******************************************************************') 
         #------------------------------------------------------------------------------------------------------
         print("\n   @@@@@@@@@@@@@@@@@@@@@@\n")
