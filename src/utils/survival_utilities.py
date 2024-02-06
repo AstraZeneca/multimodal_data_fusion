@@ -36,7 +36,7 @@ def hyperparameter_search(data: list, hyperparam_space: dict, model, splits: int
     return result
 
 
-def prepare_data_sksurv(data_train, data_test):#TODO: add handle_categorical as option
+def prepare_data_sksurv(data_train, data_test, target_cols):#TODO: add handle_categorical as option
     """
     Method to prepare training & test sets to be used for training & evaluating scikit-survival models.
     Current version also converts categorical to numerical (ordinal) --TODO: Hard-coded; make dynamic.
@@ -80,16 +80,7 @@ def prepare_data_sksurv(data_train, data_test):#TODO: add handle_categorical as 
         warnings.simplefilter('ignore')
         #Convert categorical to numerical:
         data_full_cat_to_num = data_full
-        
-#         #Option 1: 1-hot-encoding (could work best for XGB) -TODO: weird bug here...fix
-#         for i in range(len(cat_columns_list)):
-#             column_name = cat_columns_list[i]
-#             if column_name in data_full.columns:
-#                 df = pd.get_dummies(data_full, columns=[column_name])
-#                 data_full_cat_to_num = pd.concat([data_full_cat_to_num, df], axis=1)
-#                 data_full_cat_to_num.drop(column_name, axis=1, inplace=True)# Now that we have the dummy variables, we can get rid of the original variable      
-
-        #Option 2: ordinal (could work best for CPH)
+      
         if verbose == 1:
             print("Categorical features converted to numerical via ordinal encoding.")
         for i in range(len(cat_columns_list)):
@@ -107,8 +98,8 @@ def prepare_data_sksurv(data_train, data_test):#TODO: add handle_categorical as 
         data_train_temp = data_full_cat_to_num[data_full['train'] == 1]
         data_test_temp = data_full_cat_to_num[data_full['train'] == 0]
         
-        X_train, Y_train = datasets.get_x_y(data_train_temp, attr_labels=['OS', 'OS.time'], pos_label=1, survival=True)
-        X_test, Y_test = datasets.get_x_y(data_test_temp, attr_labels=['OS', 'OS.time'], pos_label=1, survival=True)
+        X_train, Y_train = datasets.get_x_y(data_train_temp, attr_labels=target_cols, pos_label=1, survival=True)
+        X_test, Y_test = datasets.get_x_y(data_test_temp, attr_labels=target_cols, pos_label=1, survival=True)
         
         X_train.drop('train', axis=1, inplace=True)
         X_test.drop('train', axis=1, inplace=True)  

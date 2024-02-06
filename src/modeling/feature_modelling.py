@@ -698,7 +698,7 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
         else:
             if split_mode == 'row':
                 print('Train/Test split PER ROW - Unstratified.')
-                data_train, data_test = train_test_split(data_, test_size=1-frac_train, random_state=random_split)  
+                data_train, data_test = train_test_split(data_, test_size=1-frac_train, random_state=random_split)
             else: # split_mode == 'subjid'
                 print('Train/Test split PER SUBJECT - Unstratified.')
                 import random
@@ -711,10 +711,13 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
                 test_SUBJIDs = unique_SUBJIDs[train_size:]
                 data_train = data_.loc[data_[subjid_col].isin(train_SUBJIDs)]
                 data_test = data_.loc[data_[subjid_col].isin(test_SUBJIDs)]
-
+    # Split training data into train/val
+    print('Train/Val split ')
+    data_train, data_val = train_test_split(data_train, test_size=1-frac_train, random_state=random_split)  
     print("SUBSET OF INTEREST IDENTIFIED & TRAIN/TEST SPLIT PERFORMED")
     print("Dimensions of full dataset: "+str(data_.shape))
     print("Dimensions of training dataset: "+str(data_train.shape))
+    print("Dimensions of validation dataset: "+str(data_val.shape))
     print("Dimensions of test dataset: "+str(data_test.shape))
 
     #Choose only features from selected modalities:
@@ -730,10 +733,12 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
     
     #Store subject ID per training & test datapoint. Might be used in the future:
     SUBJID_TR = data_train[subjid_col]
+    SUBJID_VAL = data_val[subjid_col]
     SUBJID_TE = data_test[subjid_col]
     
     #Store PDL1 status per training & test datapoint. Might be used in the future:
     PDL1_TR = data_train[pdl1_col]
+    PDL1_VAL = data_val[pdl1_col]
     PDL1_TE = data_test[pdl1_col]
     
     ######################TODO: Add imputation?  
@@ -746,6 +751,7 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
     if subset_selection_mode == 'none':# if no dimensionality reduction is to be applied to the chosen modality/ies:
         
         data_train = data_train[selected_column_names + CLIN_COLS_TARG]
+        data_val = data_val[selected_column_names + CLIN_COLS_TARG]
         data_test = data_test[selected_column_names + CLIN_COLS_TARG]   
         
         features_per_modality = get_features_per_modality(data_train, modalities_dict)
@@ -763,19 +769,23 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
                     if preprocess_modality_dict['type'][indx] == 'standardize': #if said step is standardization (i.e. subtract mean and scales by standard deviation)
                         sc = preprocessing.StandardScaler()
                         data_train[value] = sc.fit_transform(data_train[value])
+                        data_val[value] = sc.transform(data_val[value])
                         data_test[value] = sc.transform(data_test[value])
                     elif preprocess_modality_dict['type'][indx] == 'minmax_scale': #if said step is minmax scaling (i.e. to lie within [0, 1])
                         sc = preprocessing.MinMaxScaler()
                         data_train[value] = sc.fit_transform(data_train[value])
+                        data_val[value] = sc.transform(data_val[value])
                         data_test[value] = sc.transform(data_test[value])
                     elif preprocess_modality_dict['type'][indx] == 'robust_scale': #if said step is robust scaling (i.e. subtract median and scales by interquantile range)
                         sc = preprocessing.RobustScaler()
                         data_train[value] = sc.fit_transform(data_train[value])
+                        data_val[value] = sc.transform(data_val[value])
                         data_test[value] = sc.transform(data_test[value])
         ##########################
             
         #Get training set bootstrap samples 
         data_train_orig = data_train[selected_column_names + CLIN_COLS_TARG]
+        data_val_orig = data_val[selected_column_names + CLIN_COLS_TARG]
         data_test_orig = data_test[selected_column_names + CLIN_COLS_TARG]
         bootstrap_size = data_train_orig.shape[0] #each bootstrap is of size equal to the original training set
         selected_featureset = [] #This will be the list of the n_runs selected featuresets (1 under each bootstrap)
@@ -823,6 +833,7 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
         selected_column_names = np.concatenate([selected_feat, CLIN_COLS_TARG], axis=0)
         
         data_train = data_train_orig[selected_column_names]#careful here: use original training set -not bootstrap- to get correct targets
+        data_val = data_val_orig[selected_column_names]
         data_test = data_test_orig[selected_column_names]
 
         #Report number of selected features per modality:
@@ -837,17 +848,20 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
     
 
         data_train.to_parquet('./filtered_data_train_.parquet')
+        data_val.to_parquet('./filtered_data_val_.parquet')
         data_test.to_parquet('./filtered_data_test_.parquet')
     
     # TODO: Add pdl1 or remove based on requirement (and absence in feature selection)
     #Add PDL1 status, even if model uses no other clinical features, if user specifically requested so:
     if include_PDL1_status and 'CLINICAL' not in subset:
-        data_train = pd.concat([data_train, PDL1_TR], axis=1) 
+        data_train = pd.concat([data_train, PDL1_TR], axis=1)
+        data_val = pd.concat([data_val, PDL1_VAL], axis=1) 
         data_test = pd.concat([data_test, PDL1_TE], axis=1)
         print('PDL1 STATUS INCLUDED BY USER REQUEST')
     #Remove PDL1 status, even if model uses the other clinical features, if user specifically requested so:
     elif not include_PDL1_status and 'CLINICAL' in subset:
         data_train = data_train.drop(pdl1_col, axis = 1)
+        data_val = data_val.drop(pdl1_col, axis = 1)
         data_test = data_test.drop(pdl1_col, axis = 1)
         print('PDL1 STATUS EXCLUDED BY USER REQUEST')
     else:
@@ -861,7 +875,8 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
     
     print("FEATURE SELECTION FINISHED!")
         
-    return(data_train, data_test) # Returns train & test set including only selected features (features were selected on this training set)
+    return(data_train, data_val, data_test) # Returns train, val & test set including only selected features (features were selected on this training set)
+
   
 def additional_dimensionality_reduction(data_train, data_test, additional_dr_options, modalities_dict, subset, verbose):
     """

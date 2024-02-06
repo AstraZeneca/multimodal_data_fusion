@@ -8,7 +8,7 @@ sys.path.append(join(parent_of_filedir, 'utils'))
 from survival_utilities import get_feature_importance_pycox, get_feature_importance_sksurv, prepare_data_sksurv, prepare_data_pycox, \
                                define_hparam_space_pycox_dynamic, define_hparam_space_pycox, hyperparameter_search 
 
-def survival_modelling_main(data_train, data_test, model, get_importances, verbose):
+def survival_modelling_main(data_train, data_val, data_test, target_cols, model, get_importances, individual_predictions, verbose):
     """
     Method to train & evaluate a specified survival model on the data. 
 
@@ -16,6 +16,8 @@ def survival_modelling_main(data_train, data_test, model, get_importances, verbo
     ----------
     data_train: pd.DATAFRAME
       Training dataframe preprocessed, filtered, undergone feature selection & additional dimensionality reduction (pycox models need data in this format)
+    data_val: pd.DATAFRAME
+      Validation dataframe preprocessed, filtered, undergone feature selection & additional dimensionality reduction (pycox models need data in this format)
     data_test: pd.DATAFRAME
       Test dataframe preprocessed, filtered, undergone feature selection & additional dimensionality reduction (pycox models need data in this format)
     model: STRING
@@ -45,21 +47,20 @@ def survival_modelling_main(data_train, data_test, model, get_importances, verbo
     Dataframe containing model information along with the model's feature importance list. Columns include 'Feature','Feature Importance', 'Feature Importance STD', 'Model', 'Test C-index', 'Validation C-index', 'Training C-index', 'Rank'.
     
     """
-        
+    pred_train, pred_test = [], []    
     if model in ['RSF', 'CPH-GB', 'CLS-GB', 'CPH-L2', 'CPH-EN']: #For sksurv models (shallow) 
         #Prepare data for sksurv model format
-        X_train, Y_train, X_test, Y_test = prepare_data_sksurv(data_train, data_test)
-        
+        X_train, Y_train, X_test, Y_test = prepare_data_sksurv(data_train, data_test, target_cols)
+        X_train, Y_train, X_val, Y_val = prepare_data_sksurv(data_train, data_val, target_cols)
         #Train survival model
         surv_model, train_set_c_index, val_set_c_index = train_survival_model_sksurv(X_train, Y_train, model) 
-
+        #Evaluate survival model on the validation set:
+        val_set_c_index = surv_model.score(X_val, Y_val)
         #Evaluate survival model on the test set:
         test_set_c_index = surv_model.score(X_test, Y_test)
         print("Test set C-index: "+str(round(test_set_c_index, 3)))
                 
     elif model in ['DEEP-SURV']:#For pycox models (deep) -could add more here in future
-        from pycox.models import CoxPH
-        
         #Train & evaluate survival model
         surv_model, train_set_c_index, val_set_c_index, test_set_c_index = train_survival_model_pycox(data_train, data_test, model, verbose) 
     else:
@@ -99,8 +100,11 @@ def survival_modelling_main(data_train, data_test, model, get_importances, verbo
         print('No feature importances requested. Generating an empty dataframe.')
 
         #TODO: In future versions, replace c-indices with predictions on individual datapoints - calculate c-indices outside
-        
-    return(surv_model, test_set_c_index, val_set_c_index, train_set_c_index, importances_df)
+    if individual_predictions:
+        pred_train = surv_model.predict(X_train)
+        pred_val = surv_model.predict(X_val)
+        pred_test = surv_model.predict(X_test)  
+    return(surv_model, test_set_c_index, val_set_c_index, train_set_c_index, importances_df, pred_train, pred_val, pred_test)
 
 
 def train_survival_model_sksurv(X_train, Y_train, model_class):   
@@ -578,7 +582,7 @@ def train_survival_model_pycox_final(X_train, Y_train, X_val, Y_val, model_class
     return(model, train_set_c_index, val_set_c_index)
 
 
-def get_weighted_ensemble_predictions(data_train, data_test, survival_models, trained_models, training_c_indices, verbose):
+def get_weighted_ensemble_predictions(data_train, data_test, target_cols, survival_models, trained_models, training_c_indices, verbose):
     
     #TODO: Add Function description
     
@@ -610,7 +614,7 @@ def get_weighted_ensemble_predictions(data_train, data_test, survival_models, tr
         if verbose == 1:
             print("Getting predictions of "+model+" model on test set.")
             
-        _, _, X_test_sksurv, Y_test_sksurv = prepare_data_sksurv(data_train, data_test) #Will need Y_test_sksurv in final evaluation even for pycox models
+        _, _, X_test_sksurv, Y_test_sksurv = prepare_data_sksurv(data_train, data_test, target_cols) #Will need Y_test_sksurv in final evaluation even for pycox models
             
         if model in ['RSF', 'CPH-GB', 'CLS-GB', 'CPH-L2', 'CPH-EN']: #For sksurv models (shallow)
             from sksurv.linear_model import CoxPHSurvivalAnalysis
@@ -759,3 +763,46 @@ def get_weighted_ensemble_predictions(data_train, data_test, survival_models, tr
 #         print('No feature importances requested. Generating an empty dataframe.')
         
 #     return(surv_model, test_set_c_index, val_set_c_index, train_set_c_index, importances_df)
+
+
+# def survival_modelling_detailed(data_train, data_test, model, get_importances, verbose):
+#   """
+#     Method to train & evaluate a specified survival model on the data. 
+
+#     Parameters
+#     ----------
+#     data_train: pd.DATAFRAME
+#       Training dataframe preprocessed, filtered, undergone feature selection & additional dimensionality reduction (pycox models need data in this format)
+#     data_test: pd.DATAFRAME
+#       Test dataframe preprocessed, filtered, undergone feature selection & additional dimensionality reduction (pycox models need data in this format)
+#     model: STRING
+#       Model to train. Options include:
+#       'CPH-L2' for Cox Proportional Hazards survival model with Ridge Penalty
+#       'CPH-EN' for Cox Proportional Hazards survival model with elastic net penalty 
+#       'CPH-GB' for Gradient Boosted unregularized Cox Proportional Hazards survival model
+#       'CLS-GB' for Gradient Boosted Componentwise Least Squares survival model
+#       'RSF' for Randomized Survival Forest survival model
+#       'DEEP-SURV' for continuous time CoxPH / Deep Survival model [J. L. Katzman,et al (2018), https://arxiv.org/abs/1606.00931] - note this needs a different data input format, hyperparameter optimization, etc.
+#     get_importances: INT
+#        1 to get feature importance list of the model, 0 not to do so
+#     verbose: INT
+#        1 to print execution details, 0 not to do so
+       
+#     Returns
+#     -------
+#     surv_model: OBJECT (sksurv or pycox MODEL)
+#     The trained model on the training dataset under the best hyperparameter configuration identified.
+#     test_set_c_index: FLOAT
+#     The Concordance Index attained by the model on the test set.
+#     val_set_c_index: FLOAT
+#     The Concordance Index attained by the model on the validation set.
+#     training_set_c_index: FLOAT
+#     The Concordance Index attained by the model on the training set.
+#     importances_df: pd.DATAFRAME
+#     Dataframe containing model information along with the model's feature importance list. Columns include 'Feature','Feature Importance', 'Feature Importance STD', 'Model', 'Test C-index', 'Validation C-index', 'Training C-index', 'Rank'.
+    
+#     """
+        
+#     #Prepare data for sksurv model format
+#     # X_train, Y_train, X_test, Y_test = prepare_data_sksurv(data_train, data_test, target_cols)
+#     return

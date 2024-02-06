@@ -101,8 +101,11 @@ def pipeline_config(exptname: str = None):
   data_settings['subject'] = 'SUBJID'
   data_settings['targets'] = ['OS', 'OS.time']
   data_settings['features'] = [["COMBO_clin", "SEX_F_clin", "ECOG_clin", "SMOKE_NEVER_clin", "BLBMI_clin", "ALB_clin", "NEUT_clin", "LDH_clin",
-                              "AST_clin", "GGT_clin", "EOS_clin", "LYM_clin", "ALP_clin", "BASO_clin", "CA_clin", "CL_clin", "HCT_clin", "K_clin",
-                              "MG_clin", "MONO_clin", "PLAT_clin", "TSH_clin", "GLUC_clin", "PROT_clin", "BLTUMSZ_clin"], []]
+                                "AST_clin", "GGT_clin", "EOS_clin", "LYM_clin", "ALP_clin", "BASO_clin", "CA_clin", "CL_clin", "HCT_clin", "K_clin",
+                                "MG_clin", "MONO_clin", "PLAT_clin", "TSH_clin", "GLUC_clin", "PROT_clin", "BLTUMSZ_clin"], []]
+  data_settings['cancer_types'] = [['ACC', 'BLCA', 'DLBC', 'UCEC', 'SKCM', 'HNSC', 'PRAD', 'KIRP', 'PAAD', 'SARC', 'CESC', 'COAD', 'LUSC', 'READ',
+                                   'KIRC', 'LIHC', 'BRCA', 'OV', 'UCS', 'GBM', 'KICH', 'THCA', 'LGG', 'LUAD', 'MESO', 'PCPG', 'TGCT', 'UVM', 'THYM', 'CHOL', 'ESCA', 'STAD', 'LAML']]
+                                   # List of list of cancer types to evaluate together.
 
   # Cohorts settings
   cohortsFilter_settings = {}
@@ -125,11 +128,14 @@ def pipeline_config(exptname: str = None):
   modelling_settings['sensitivity_analysis'] = True  # Sensitivity analysis or cohorts
   modelling_settings['data_characteristics'] = copy.deepcopy(data_settings)
   modelling_settings['cohorts_settings'] = copy.deepcopy(cohortsFilter_settings)
+  modelling_settings['late_fusion'] = False
+  modelling_settings['evaluate_on_all_cancers'] = True
 
   # Archival Settings
   ExptOutputArchivalSettings = {}
   ExptOutputArchivalSettings['Enabled'] = True # Output archival to disc is enabled by default
   ExptOutputArchivalSettings['WhenDisabledLoadFromExpt'] = 'default' #name of experiment whose output datadict you want to load (instead of re-creating)
+  ExptOutputArchivalSettings['DebugOn'] = True  # Print statements to display progress
 
   #---------------------------------------------------------------------------
   #DEFAULT -- to be used as template for any custom experiments (see examples below)
