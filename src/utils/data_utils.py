@@ -14,9 +14,15 @@ def load_data(datapath: str) -> pd.DataFrame:
     -------
     Dataframe
     """
-    data = pd.read_csv(datapath)
+    if ".csv" in datapath:
+        data = pd.read_csv(datapath)
+    elif ".parquet" in datapath:
+        data = pd.read_parquet(datapath, engine='pyarrow')
+    else:
+        raise ValueError(f"Unsupported file format: {datapath}")
     # Drop Unnamed columns
-    data = data.drop('Unnamed: 0', axis=1)
+    data = data.loc[:, ~data.columns.str.startswith('Unnamed')]
+    # data = data.drop('Unnamed: 0', axis=1)
     return data
 
 

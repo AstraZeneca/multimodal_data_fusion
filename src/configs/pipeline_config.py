@@ -27,6 +27,13 @@ def pipeline_config(exptname: str = None):
   # Modalities
   modalities_dict = {}
   modalities_dict['CLINICAL'] = '_clin'
+  modalities_dict['LNCRNA'] = '_lncrna'
+  modalities_dict['MIRNA'] = '_mirna'
+  modalities_dict['METHYLATION'] = '_meth'
+  modalities_dict['EXPRESSION'] = '_exp'
+  modalities_dict['MUTATION'] = '_mut'
+  modalities_dict['SUBTYPE'] = '_smut'
+  modalities_dict['PROTEIN'] = '_rppa'
   modalities_dict['PYRADIOMICS'] = '_pr'
 
   # Preprocessing settings
@@ -60,7 +67,7 @@ def pipeline_config(exptname: str = None):
   supervised_fs_settings = {}
   supervised_fs_settings['discretization_bins'] = 10  #Some feature selection methods require discretized features &/or targets; this specifies how many bins to use
   supervised_fs_settings['target_fs'] = 'discrete'  # Options: 'discrete', 'continuous', 'median_binarized'
-  supervised_fs_settings['method'] = 'MIM'  # Method to use; Options: MIM, ICAP, DISR, MRMR, JMI, CMIM, CIFE, MIFS --Suggested are JMI or CMIM
+  supervised_fs_settings['method'] = 'MIM'  # Method to use; Options: MIM, ICAP, DISR, MRMR, JMI, CMIM, CIFE, MIFS, CORR --Suggested are JMI or CMIM. adding spearman corr
   supervised_fs_settings['K_top'] = 50  # Top K most informative features to select in each featureset (if bootstraps are used to select most consistent among these, this number will be further reduced)
 
   # Set the feature selection settings
@@ -176,7 +183,87 @@ def pipeline_config(exptname: str = None):
   experiments['000003']['modelling_settings']['cohorts_settings']['UseCohorts']       = True
   experiments['000003']['modelling_settings']['cohorts_settings']['CohortTable']      = '/projects/other/pmb_radx/durva_nsclc/build/modelling_sets/cohorts.csv'
 
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000004 -- TCGA analysis with all modalities
+  #---------------------------------------------------------------------------
+  experiments['000004']                                   = {}
+  experiments['000004']                                   = copy.deepcopy(experiments['default'])
+  experiments['000004']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000004']['settings']['modalities'].pop('PYRADIOMICS')
+  experiments['000004']['settings']['modalities'].pop('CLINICAL')
+  experiments['000004']['modelling_settings']['subsets']  = [['LNCRNA', 'MIRNA', 'METHYLATION', 
+                                                              'MUTATION', 'PROTEIN', 'EXPRESSION', 'SUBTYPE']]
+  experiments['000004']['modelling_settings']['evaluate_on_all_cancers'] = True
+  experiments['000004']['modelling_settings']['num_runs'] = 10
+  experiments['000004']['modelling_settings']['data_characteristics']['subject'] = 'bcr_patient_barcode'
+  experiments['000004']['modelling_settings']['data_characteristics']['features'] = [[], [], [],
+                                                                                     [], [], [], []]
+  experiments['000004']['modelling_settings']['data_characteristics']['missingdata_mode'] = [None, None, None,
+                                                                                             None, None, None, None]
+  experiments['000004']['feature_selection_settings']['supervised']['method'] = 'CORR'
+  experiments['000004']['feature_selection_settings']['supervised']['K_top'] = 25
+  experiments['000004']['feature_selection_settings']['consistency_options']['n_runs'] = 10
+  experiments['000004']['modelling_settings']['data_characteristics']['cancer_types'] = [['LUSC'], ['BRCA'], ['LUAD']]
+
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000005 -- LUAD analysis with all modalities without consistency
+  #---------------------------------------------------------------------------
+  experiments['000005']                                   = {}
+  experiments['000005']                                   = copy.deepcopy(experiments['000004'])
+  experiments['000005']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000005']['feature_selection_settings']['consistency_options']['n_runs'] = 0
+  experiments['000005']['modelling_settings']['data_characteristics']['cancer_types'] = [['LUSC']]
+
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000006 -- LUSC analysis with all modalities without consistency
+  #---------------------------------------------------------------------------
+  experiments['000006']                                   = {}
+  experiments['000006']                                   = copy.deepcopy(experiments['000005'])
+  experiments['000006']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000006']['feature_selection_settings']['consistency_options']['n_runs'] = 0
+  experiments['000006']['modelling_settings']['data_characteristics']['cancer_types'] = [['LUAD']]
+
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000007 -- BRCA analysis with all modalities without consistency
+  #---------------------------------------------------------------------------
+  experiments['000007']                                   = {}
+  experiments['000007']                                   = copy.deepcopy(experiments['000005'])
+  experiments['000007']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000007']['feature_selection_settings']['consistency_options']['n_runs'] = 0
+  experiments['000007']['modelling_settings']['data_characteristics']['cancer_types'] = [['BRCA']]
+
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000008 -- LUAD and LUSC analysis with all modalities without consistency
+  #---------------------------------------------------------------------------
+  experiments['000008']                                   = {}
+  experiments['000008']                                   = copy.deepcopy(experiments['000005'])
+  experiments['000008']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000008']['feature_selection_settings']['consistency_options']['n_runs'] = 0
+  experiments['000008']['modelling_settings']['data_characteristics']['cancer_types'] = [['LUAD', 'LUSC']]
+
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000009 -- LUSC analysis with all modalities with consistency
+  #---------------------------------------------------------------------------
+  experiments['000009']                                   = {}
+  experiments['000009']                                   = copy.deepcopy(experiments['000005'])
+  experiments['000009']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000009']['feature_selection_settings']['consistency_options']['n_runs'] = 10
   
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000010 -- LUSC analysis with all modalities with consistency
+  #---------------------------------------------------------------------------
+  experiments['000010']                                   = {}
+  experiments['000010']                                   = copy.deepcopy(experiments['000006'])
+  experiments['000010']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000010']['feature_selection_settings']['consistency_options']['n_runs'] = 10
+
+  #---------------------------------------------------------------------------
+  #EXPERIMENT 000011 -- LUSC analysis with all modalities with consistency
+  #---------------------------------------------------------------------------
+  experiments['000011']                                   = {}
+  experiments['000011']                                   = copy.deepcopy(experiments['000008'])
+  experiments['000011']['ExptDescription']                = 'experiment with all features enabled'
+  experiments['000011']['feature_selection_settings']['consistency_options']['n_runs'] = 10
 
   if not exptname in experiments:
       exptname = 'default'

@@ -1,6 +1,7 @@
 # Written by Greg Ver Steeg (http://www.isi.edu/~gregv/npeet.html)
 
 import scipy.spatial as ss
+from scipy.stats import spearmanr
 from scipy.special import digamma
 from math import log
 import numpy.random as nr
@@ -206,6 +207,47 @@ def zip2(*args):
     # E.g. zip2([[1],[2],[3]],[[4],[5],[6]]) = [[1,4],[2,5],[3,6]]
     return [sum(sublist, []) for sublist in zip(*args)]
 
+
+def correlation(X, y, **kwargs):
+    """
+    This function implements the Spearman correlation feature selection.
+    
+    Input
+    -----
+    X: {numpy array}, shape (n_samples, n_features)
+        Input data, guaranteed to be a discrete numpy array
+    y: {numpy array}, shape (n_samples,)
+        guaranteed to be a numpy array
+    kwargs: {dictionary}
+        n_selected_features: {int}
+            number of features to select
+    Output
+    ------
+    F: {numpy array}, shape (n_features,)
+        index of selected features, F[0] is the most important feature
+    """
+    # indicate whether the user specifies the number of features
+    is_n_selected_features_specified = False
+    if 'n_selected_features' in kwargs.keys():
+        n_selected_features = kwargs['n_selected_features']
+        is_n_selected_features_specified = True
+
+    # Calculate correlations
+    correlations = []
+
+    for i in range(X.shape[1]):
+        corr, _ = spearmanr(X[:, i], y)
+        correlations.append(corr)
+
+    # Convert to numpy array for easy manipulation
+    correlations = np.array(correlations)
+
+    # Sort indices by absolute correlation
+    top_corr_indices = np.argsort(np.abs(correlations))[::-1]
+    if is_n_selected_features_specified:
+        return top_corr_indices[:n_selected_features]
+    else:
+        return top_corr_indices
 
 #Code below is from the skfeature package: https://github.com/jundongl/scikit-feature 
 

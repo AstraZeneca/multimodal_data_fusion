@@ -47,7 +47,7 @@ def survival_modelling_main(data_train, data_val, data_test, target_cols, model,
     Dataframe containing model information along with the model's feature importance list. Columns include 'Feature','Feature Importance', 'Feature Importance STD', 'Model', 'Test C-index', 'Validation C-index', 'Training C-index', 'Rank'.
     
     """
-    pred_train, pred_test = [], []    
+    pred_train, pred_val, pred_test = [], [], []
     if model in ['RSF', 'CPH-GB', 'CLS-GB', 'CPH-L2', 'CPH-EN']: #For sksurv models (shallow) 
         #Prepare data for sksurv model format
         X_train, Y_train, X_test, Y_test = prepare_data_sksurv(data_train, data_test, target_cols)

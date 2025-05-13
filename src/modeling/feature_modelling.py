@@ -376,6 +376,8 @@ def supervised_fs(data_train, target_vars, modalities_dict, subset, target_fs, m
         feat_idx, J ,MIfy = feature_selection_utils.jmi(FEAT, TARGET, n_selected_features=K_top)
     elif method == 'CMIM':# Multivariate, accounts for relevance, redundancy & complementarity - red. is max of pairwise associations (undervalued less than JMI but penalizes complementarity)    
         feat_idx, J ,MIfy = feature_selection_utils.cmim(FEAT, TARGET, n_selected_features=K_top)
+    elif method == 'CORR':
+        feat_idx = feature_selection_utils.correlation(FEAT, TARGET, n_selected_features=K_top)
     else:
       raise ValueError("Method not identified")
     
@@ -585,7 +587,7 @@ def feature_selection_main(data_train, target_vars, modalities_dict, subset,
 
     return selected_feat
 
-def feature_selection_pipeline(data, modalities_dict, subset, random_split, include_PDL1_status, modality_handling_mode,
+def feature_selection_pipeline(data, cancer_type, modalities_dict, subset, random_split, include_PDL1_status, modality_handling_mode,
                                subset_selection_mode, preprocess_modality_dict, frac_train, split_mode, data_char_dict,
                                unsupervised_fs_options_dict, supervised_fs_options_dict, fs_consistency_options_dict, user_options_dict, stratify=False, strat_cols = []):
     """
@@ -671,7 +673,19 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
 
     assert len(modalities_dict.keys()) == len(feature_subset), "Features for each modality needs to be indicated"
 
-    data_ = data[0]
+    # data_ = data[0]
+    # If shorthand 'ALL' was used for cancer type, expand:
+    if cancer_type == ['ALL']: 
+        cancer_type = ['ACC', 'BLCA', 'DLBC', 'UCEC', 'SKCM', 'HNSC', 'PRAD', 'KIRP',
+                       'PAAD', 'SARC', 'CESC', 'COAD', 'LUSC', 'READ', 'KIRC', 'LIHC',
+                       'BRCA', 'OV', 'UCS', 'GBM', 'KICH', 'THCA', 'LGG', 'LUAD', 'MESO',
+                       'PCPG', 'TGCT', 'UVM', 'THYM', 'CHOL', 'ESCA', 'STAD', 'LAML']
+        
+    # Choose data of only the selected cancer type (store in a new dataframe data_)
+    data_ = data[0].query('type in @cancer_type').reset_index(drop=True).copy()
+    
+    print(f"{data_.shape[0]} patients of the following CANCER TYPES are INCLUDED: {cancer_type}")
+    # print(cancer_type)
     
     # Isolate features per each modality:
     features_per_modality = get_features_per_modality(data_, modalities_dict, feature_subset)
@@ -737,9 +751,10 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
     SUBJID_TE = data_test[subjid_col]
     
     #Store PDL1 status per training & test datapoint. Might be used in the future:
-    PDL1_TR = data_train[pdl1_col]
-    PDL1_VAL = data_val[pdl1_col]
-    PDL1_TE = data_test[pdl1_col]
+    if include_PDL1_status:
+      PDL1_TR = data_train[pdl1_col]
+      PDL1_VAL = data_val[pdl1_col]
+      PDL1_TE = data_test[pdl1_col]
     
     ######################TODO: Add imputation?  
     
@@ -859,7 +874,7 @@ def feature_selection_pipeline(data, modalities_dict, subset, random_split, incl
         data_test = pd.concat([data_test, PDL1_TE], axis=1)
         print('PDL1 STATUS INCLUDED BY USER REQUEST')
     #Remove PDL1 status, even if model uses the other clinical features, if user specifically requested so:
-    elif not include_PDL1_status and 'CLINICAL' in subset:
+    elif not include_PDL1_status and 'CLINICAL' in subset and pdl1_col in data_train.columns:
         data_train = data_train.drop(pdl1_col, axis = 1)
         data_val = data_val.drop(pdl1_col, axis = 1)
         data_test = data_test.drop(pdl1_col, axis = 1)

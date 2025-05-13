@@ -5,6 +5,7 @@ import scipy.stats as st
 import argparse
 import random
 import pickle
+from typing import Tuple
 from modeling.feature_modelling import feature_selection_pipeline, get_features_per_modality
 from modeling.survival_modelling import survival_modelling_main, get_weighted_ensemble_predictions
 from modeling.late_fusion_modelling import late_fusion
@@ -17,20 +18,25 @@ from utils.config_utils import save_config
 def getModels(num_runs: int, run: int, modality: str, survival_models: list, data_train: pd.DataFrame, data_val: pd.DataFrame, data_test: pd.DataFrame, targets: list, debug: int, return_feature_importance_list: int) -> Tuple[pd.DataFrame, np.array, np.array]:
     trained_models = pd.DataFrame(
         None, index=range(num_runs), columns=survival_models)
-    pred_true_train = pd.DataFrame(None, index=range(1), columns=survival_models)
-    pred_true_val = pd.DataFrame(None, index=range(1), columns=survival_models)
-    pred_true_test = pd.DataFrame(None, index=range(1), columns=survival_models)
-    expt_name = model
-    if not modality is None:
-        expt_name += '_' + modality
+    pred_run_train, pred_run_val, pred_run_test = [], [], []
+    pred_true_train = pd.DataFrame(columns=['Model', 'Predicted Risk Score'])
+    pred_true_val = pd.DataFrame(columns=['Model', 'Predicted Risk Score'])
+    pred_true_test = pd.DataFrame(columns=['Model', 'Predicted Risk Score'])
     for model in survival_models:
-        surv_model, _, _, _, _, pred_train, pred_val, pred_test = survival_modelling_main(
-            data_train, data_val, data_test, targets, model, return_feature_importance_list, debug)
-        pred_true_train.at[0, 'Predicted Risk Score '+expt_name] = pred_train
-        pred_true_val.at[0, 'Predicted Risk Score '+expt_name] = pred_val
-        pred_true_test.at[0, 'Predicted Risk Score '+expt_name] = pred_test
+        expt_name = model
+        if not modality is None:
+            expt_name += '_' + modality
+        surv_model, test_set_c_index, val_set_c_index, train_set_c_index, _, pred_train, pred_val, pred_test = survival_modelling_main(
+            data_train, data_val, data_test, targets, model, return_feature_importance_list, True, debug)
+        pred_run_train.append(train_set_c_index)
+        pred_run_val.append(val_set_c_index)
+        pred_run_test.append(test_set_c_index)
+        pred_true_train = pd.concat([pred_true_train, pd.DataFrame({'Model': expt_name, 'Predicted Risk Score': pred_train})])
+        pred_true_val = pd.concat([pred_true_val, pd.DataFrame({'Model': expt_name, 'Predicted Risk Score': pred_val})])
+        pred_true_test = pd.concat([pred_true_test, pd.DataFrame({'Model': expt_name, 'Predicted Risk Score': pred_test})])
+
         trained_models.at[trained_models.index[run], model] = surv_model
-        return trained_models, pred_true_train, pred_true_val, pred_true_test
+    return trained_models, pred_true_train, pred_true_val, pred_true_test, pred_run_train, pred_run_val, pred_run_test
 
 
 def getDataPerModality(subset: list, modality: str, data_train_all_modalities: pd.DataFrame, data_val_all_modalities: pd.DataFrame, data_test_all_modalities: pd.DataFrame, features_per_modality: dict, debug: int, time_col: str, evt_col: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -98,11 +104,10 @@ def pipeline(args):
     all_runs_test = pd.DataFrame(np.nan, index=range(num_runs), columns=survival_models)
     all_runs_val = pd.DataFrame(np.nan, index=range(num_runs), columns=survival_models)
     all_runs_train = pd.DataFrame(np.nan, index=range(num_runs), columns=survival_models)
-
     # Will store survival models trained on each run:
     trained_models_per_modality = {}
 
-    #Will store Test set C-index of weighted ensemble for each run:
+    #Will store Test set C-index of weighted ensemble for each run:un:
     full_train_weighted_ensemble_c_index = np.zeros((num_runs, 1))
     train_weighted_ensemble_c_index = np.zeros((num_runs, 1))
 
@@ -114,7 +119,7 @@ def pipeline(args):
 
     # Load the data
     data = load_data(datapath)
-    cancer_types = expt_config['data_settings']['cancer_types']
+    cancer_types = expt_config['modelling_settings']['data_characteristics']['cancer_types']
     ### Save config ###
     save_config(expt_config=expt_config, expt_name=output_name, savepath=save_path)
 
@@ -130,7 +135,7 @@ def pipeline(args):
             # Will store per-cancer importances:
             importances_full_df_type = {}
 
-            # Will store C-index of base models for each run:
+            # l store C-index of base models for each run: models for each run:
             for indiv_type in cancer_type:
                 all_runs_test_type[indiv_type] = pd.DataFrame(
                     np.nan, index=range(num_runs), columns=survival_models)
@@ -140,7 +145,7 @@ def pipeline(args):
             full_train_weighted_ensemble_c_index_type = np.zeros((num_runs, len(cancer_type)))
             train_weighted_ensemble_c_index_type = np.zeros((num_runs, len(cancer_type)))
             
-            #Will store ensemble weights for each run:
+            #ensemblerun
             ensemble_weights_tr = np.zeros((num_runs, len(survival_models)))
             
             #Will store different ensemble weights for each run, per cancer type:
@@ -176,6 +181,7 @@ def pipeline(args):
                     if not os.path.isdir(subset_folder):
                         os.makedirs(subset_folder)
                     random_splits = random.sample(range(1, 1000), num_runs)
+                    # random_splits = [100, 125, 223, 982, 229, 2030, 28949, 823, 1652, 92]
                     np.save(os.path.join(subset_folder, 'split_indices.npy'), random_splits)
             # Will store survival models trained on each run:
             trained_models = pd.DataFrame(None, index=range(num_runs), columns=survival_models)
@@ -211,18 +217,19 @@ def pipeline(args):
                         run_file.close()
                     else:
                         #--------- Perform subset selection, train-test split, preprocessing & feature selection: --------
-                        data_train, data_val, data_test = feature_selection_pipeline(data=dataframes, modalities_dict=expt_config['settings']['modalities'], subset=subset,
-                                                                        random_split=random_splits[run], include_PDL1_status=expt_config['modelling_settings']['pdl1'],
-                                                                        modality_handling_mode=expt_config['feature_selection_settings']['modality_handling'], 
-                                                                        subset_selection_mode=expt_config['feature_selection_settings']['subset_selection_mode'], 
-                                                                        preprocess_modality_dict=expt_config['settings']['preprocessing'], 
-                                                                        frac_train=expt_config['settings']['train_fraction'], split_mode=expt_config['settings']['split_mode'],
-                                                                        data_char_dict=expt_config['modelling_settings']['data_characteristics'],
-                                                                        unsupervised_fs_options_dict=expt_config['feature_selection_settings']['unsupervised'], 
-                                                                        supervised_fs_options_dict=expt_config['feature_selection_settings']['supervised'], 
-                                                                        fs_consistency_options_dict=expt_config['feature_selection_settings']['consistency_options'], 
-                                                                        user_options_dict=user_options_settings, stratify=expt_config['settings']['stratify'],
-                                                                        strat_cols=expt_config['settings']['strat_columns'])
+                        data_train, data_val, data_test = feature_selection_pipeline(data=dataframes, cancer_type=cancer_type, 
+                                                                                    modalities_dict=expt_config['settings']['modalities'], subset=subset,
+                                                                                    random_split=random_splits[run], include_PDL1_status=expt_config['modelling_settings']['pdl1'],
+                                                                                    modality_handling_mode=expt_config['feature_selection_settings']['modality_handling'], 
+                                                                                    subset_selection_mode=expt_config['feature_selection_settings']['subset_selection_mode'], 
+                                                                                    preprocess_modality_dict=expt_config['settings']['preprocessing'], 
+                                                                                    frac_train=expt_config['settings']['train_fraction'], split_mode=expt_config['settings']['split_mode'],
+                                                                                    data_char_dict=expt_config['modelling_settings']['data_characteristics'],
+                                                                                    unsupervised_fs_options_dict=expt_config['feature_selection_settings']['unsupervised'], 
+                                                                                    supervised_fs_options_dict=expt_config['feature_selection_settings']['supervised'], 
+                                                                                    fs_consistency_options_dict=expt_config['feature_selection_settings']['consistency_options'], 
+                                                                                    user_options_dict=user_options_settings, stratify=expt_config['settings']['stratify'],
+                                                                                    strat_cols=expt_config['settings']['strat_columns'])
                     run_file = open(os.path.join(subset_folder, str(run+1) + '_data.pkl'), "wb")
                     pickle.dump(data_train, run_file)
                     pickle.dump(data_val, run_file)
@@ -244,7 +251,6 @@ def pipeline(args):
                 data_test_all_modalities = data_test.copy()
                 
                 features_per_modality = get_features_per_modality(data_train, expt_config['settings']['modalities'])
-                # NOTE: Ask Nikos if this is where the code changes to be for late fusion
                 if expt_config['modelling_settings']['late_fusion']:
                     for modality in range(len(subset)):
                         data_train, data_val, data_test = getDataPerModality(
@@ -261,11 +267,8 @@ def pipeline(args):
                         pred_true_train['True OS'] = data_train[os_col]
                         pred_true_val['True OS'] = data_val[os_col]
                         pred_true_test['True OS'] = data_test[os_col]
-                        pred_true_train['CNSR'] = data_train[evt_col]
-                        pred_true_val['CNSR'] = data_val[evt_col]
-                        pred_true_test['CNSR'] = data_test[evt_col]
                         # Running all the Selected Survival Models    
-                        trained_models, pred_train, pred_val, pred_test = getModels(num_runs, run, modality, survival_models, data_train, data_val, data_test, expt_config['modelling_settings'][
+                        trained_models, pred_train, pred_val, pred_test, _, _, _ = getModels(num_runs, run, modality, survival_models, data_train, data_val, data_test, expt_config['modelling_settings'][
                                                 'data_characteristics']['targets'], user_options_settings['verbose'], user_options_settings['return_feature_importance_list'])
                         model_pool_run = trained_models.iloc[run]
                         pred_true_train= pd.concat([pred_true_train, pred_train])
@@ -284,15 +287,27 @@ def pipeline(args):
                     # pred_true_train['Cancer Type'] = data_train['cancer_type']
                     # pred_true_val['Cancer Type'] = data_val['cancer_type']
                     # pred_true_test['Cancer Type'] = data_test['cancer_type']
-                    trained_models, pred_train, pred_val, pred_test = getModels(num_runs, run, None, survival_models, data_train, data_val, data_test, expt_config['modelling_settings'][
-                                                'data_characteristics']['targets'], user_options_settings['verbose'], user_options_settings['return_feature_importance_list'])
+                    trained_models, pred_train, pred_val, pred_test, train_set_c_index, val_set_c_index, test_set_c_index = getModels(num_runs, run, None, survival_models, data_train, 
+                                                                                                                             data_val, data_test, 
+                                                                                                                             expt_config['modelling_settings']['data_characteristics']['targets'], 
+                                                                                                                             user_options_settings['verbose'], 
+                                                                                                                             user_options_settings['return_feature_importance_list'])
                     model_pool_run = trained_models.iloc[run]
+
+                    #Store test set, val set & train_set C-index attained by model:
+                    all_runs_test.iloc[run, :len(test_set_c_index)] = test_set_c_index
+                    all_runs_val.iloc[run, :] = val_set_c_index
+                    all_runs_train.iloc[run, :] = train_set_c_index
                     #Store models & their training / validation set performances to compute ensemble predictions:
                     training_c_indices_run = all_runs_train.iloc[run].to_numpy() #all_runs_val.iloc[run].to_numpy() #Choose training or validation set weights
                     model_pool_run = trained_models.iloc[run]
                     full_train_weighted_ensemble_c_index[run], train_weighted_ensemble_c_index[run] = get_weighted_ensemble_predictions(data_train, data_test, expt_config['modelling_settings']['data_characteristics']['targets'], survival_models, model_pool_run, training_c_indices_run, expt_config['user_options_settings']['verbose'])    
                     #all_runs_test.at[all_runs_train.index[run], 'Full Train Weighted Ensemble'] = full_train_weighted_ensemble_c_index[run] #ignore this; we almost never get a model with <0.5 training set C-index
-                    all_runs_test.at[all_runs_train.index[run], 'Train Weighted Ensemble'] = train_weighted_ensemble_c_index[run]
+                    if 'Trained Weighted Ensemble' not in all_runs_test.columns:
+                        all_runs_test['Trained Weighted Ensemble'] = np.nan
+                    # Update the DataFrame
+                    all_runs_test.at[all_runs_train.index[run], 'Trained Weighted Ensemble'] = train_weighted_ensemble_c_index[run]
+                    # all_runs_test.at[all_runs_train.index[run], 'Train Weighted Ensemble'] = train_weighted_ensemble_c_index[run]
                     pred_true_train= pd.concat([pred_true_train, pred_train])
                     pred_true_val= pd.concat([pred_true_val, pred_val])
                     pred_true_test= pd.concat([pred_true_test, pred_test])
@@ -321,9 +336,9 @@ def pipeline(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Deep Survival Pipeline")
+    parser = argparse.ArgumentParser(description="Multiomics Pipeline")
     parser.add_argument('--expt', '-e', default=None, type=int, help='Experiment version to be run')
-    parser.add_argument('--csv', '-c', default='clinical_radiomics_features.csv', 
+    parser.add_argument('--csv', '-c', default=None, 
                         type=str, help='Full path to the features csv')
     args = parser.parse_args()
     pipeline(args)

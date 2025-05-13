@@ -27,10 +27,10 @@ def path_config(username=None):
 
   #---------------------------------------------------------------------------
   paths['default'] = {}
-  paths['default']['temp_data'] = os.path.join('/scratch', os.environ['USER'], 'pipeline', 'temp_data')
-  paths['default']['exec'] = os.path.join('/scratch', os.environ['USER'], 'pipeline', 'exec')
-  paths['default']['output'] = os.path.join('/scratch', os.environ['USER'], 'pipeline', 'output')
-  paths['default']['checkpoints'] = os.path.join('/scratch', os.environ['USER'], 'pipeline', 'checkpoints')
+  paths['default']['temp_data'] = os.path.join('/scratch', os.environ['USER'], 'multiomics', 'temp_data')
+  paths['default']['exec'] = os.path.join('/scratch', os.environ['USER'], 'multiomics', 'exec')
+  paths['default']['output'] = os.path.join('/scratch', os.environ['USER'], 'multiomics', 'output')
+  paths['default']['checkpoints'] = os.path.join('/scratch', os.environ['USER'], 'multiomics', 'checkpoints')
 
   #Every user can setup their own custom paths below using the default as template
   #NOTE: if you add a new key (see default above), please create a corresponding entry in the "default" dataset as

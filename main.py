@@ -11,7 +11,7 @@
 
 import os
 import argparse
-from src.modeling.pipeline import pipeline_main
+from src.pipeline import pipeline
 
 
 def main(args: argparse.ArgumentParser):
@@ -23,7 +23,7 @@ def main(args: argparse.ArgumentParser):
     csv_path = args.csv
     config_path = args.yaml
     experiment = args.expt
-    pipeline_main(config_path=config_path, csv_path=csv_path, expt_name=experiment)
+    pipeline(config_path=config_path, csv_path=csv_path, expt_name=experiment)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Multiomics survival pipeline")
