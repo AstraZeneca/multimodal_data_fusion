@@ -23,7 +23,7 @@ Several python packages are required for the utilization of this library and are
 Alterately, use the environment.yml to create a conda environment with all required packages installed.
 
 ```
-conda env create -p /path/to/location -f environment.yml
+conda env create -p /path/to/location -f environment_new.yml
 ```
 if installing to a different location, it can be symbolically linked via
 ```
@@ -37,7 +37,7 @@ conda install -c sebp scikit-survival
 
 The pipeline can be run on the terminal via:
 ```
-python main.py -y /path/to/config_yaml -e experiment_name -c /path/to/input/csv
+python src/pipeline.py -e experiment_name -c /path/to/input/csv
 ```
 
 Input File Format:
