@@ -1,21 +1,23 @@
 # Multiomics Survival Pipeline
+Nikolaos Nikolaou, Domingo Salazar, Harish RaviPrakash, Miguel Gonçalves, Rob Mulla, Nikolay Burlutskiy, Natasha Markuzon & Etai Jacob
 
 ## Table of Contents
 
 - [About](#about)
 - [Getting Started](#getting_started)
 - [Usage](#usage)
-- [Contributing](../CONTRIBUTING.md)
+- [Reference](#reference)
 
 ## About <a name = "about"></a>
 
 A python library for multimodal feature integration and survival prediction.
-This pipeline has been developped by the AstraZeneca Oncology Biometrics R&D ML/AI Team. It can be used to preprocess and reduce the dimensionality of tabular datasets (unimodal or multimodal) and train & evaluate survival models on them. Its functionalities include several preprocessing & imputation options, flexibility regarding when to integrate modalities (in the case of multimodal data), a range of feature reduction approaches and survival modelling methods, rigorous evaluation including reporting the models' feature importance.
+This pipeline has been developped by the AstraZeneca Oncology Data Science team. It can be used to preprocess and reduce the dimensionality of tabular datasets (unimodal or multimodal) and train & evaluate survival models on them. Its functionalities include several preprocessing & imputation options, flexibility regarding when to integrate modalities (in the case of multimodal data), a range of feature reduction approaches and survival modelling methods, rigorous evaluation including reporting the models' feature importance.
+If you use it, please cite our paper - [A machine learning approach for multimodal data fusion for survival prediction in cancer patients.](https://www.nature.com/articles/s41698-025-00917-6?utm_source=rct_congratemailt&utm_medium=email&utm_campaign=oa_20250506&utm_content=10.1038/s41698-025-00917-6)
 
 ## Getting Started <a name = "getting_started"></a>
 
 Fork the current repository to get a copy of the repo that can be modified. 
-Instructions on how to fork a repo can be found at: https://support.atlassian.com/bitbucket-cloud/docs/fork-a-repository
+Instructions on how to fork a repo can be found at:https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo
 
 ### Prerequisites
 
@@ -79,7 +81,11 @@ Cross-validation is performed for model selection. Once optimal hyperparameters 
 
 7. Evaluation
 Option for multiple runs, option for different train/test splits, in each of which test set data are only used during evaluation.
-Detailed results can include TODO...
 
 The pipeline currently supports only survival analysis (regression) tasks.
-The pipeline currently supports only early & intermediate modality fusion approaches.
+
+## Reference <a name = "reference"></a>
+For more details see our paper - [A machine learning approach for multimodal data fusion for survival prediction in cancer patients.](https://www.nature.com/articles/s41698-025-00917-6?utm_source=rct_congratemailt&utm_medium=email&utm_campaign=oa_20250506&utm_content=10.1038/s41698-025-00917-6). If you use this tool please cite it as follows:
+```
+Nikolaou, N., Salazar, D., RaviPrakash, H., Gonçalves, M., Mulla, R., Burlutskiy, N., Markuzon, N. and Jacob, E., 2025. A machine learning approach for multimodal data fusion for survival prediction in cancer patients. npj Precision Oncology, 9(1), pp.1-14.
+```
