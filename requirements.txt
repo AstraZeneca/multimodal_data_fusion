@@ -1,4 +1,4 @@
-deepdiff==5.8.1
+deepdiff==8.6.2
 eli5==0.13.0
 lifelines==0.27.0
 matplotlib==3.5.2
